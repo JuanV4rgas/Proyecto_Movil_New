@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "297471827650",
+    "project_id": "critichord-316da",
+    "storage_bucket": "critichord-316da.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:297471827650:android:0b721c4e4e05632c24655b",
+        "android_client_info": {
+          "package_name": "com.example.proyecto_movil"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBgyahVMDlu0ayiNGt5VS-TnEUb1jMSvBo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
