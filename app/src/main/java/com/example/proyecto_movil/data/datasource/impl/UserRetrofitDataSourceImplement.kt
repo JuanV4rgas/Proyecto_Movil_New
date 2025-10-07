@@ -3,6 +3,7 @@ package com.example.proyecto_movil.data.datasource.impl.retrofit
 import com.example.proyecto_movil.data.UserInfo
 import com.example.proyecto_movil.data.datasource.UserRemoteDataSource
 import com.example.proyecto_movil.data.datasource.services.UserRetrofitService
+import com.example.proyecto_movil.data.dtos.RegisterUserDto
 import com.example.proyecto_movil.data.dtos.ReviewDto
 import com.example.proyecto_movil.data.dtos.UpdateUserDto
 import com.example.proyecto_movil.data.dtos.toUserUI
@@ -31,4 +32,9 @@ class UserRetrofitDataSourceImpl @Inject constructor(
         val dto = service.updateUser(id, userDto)
         return dto.toUserUI()
     }
+
+    override suspend fun registerUser(registerUserDto: RegisterUserDto, userId: String){
+        //to-do
+    }
+
 }
