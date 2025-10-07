@@ -1,9 +1,12 @@
 package com.example.proyecto_movil.di
 
 import com.example.proyecto_movil.data.datasource.ArtistRemoteDataSource
+import com.example.proyecto_movil.data.datasource.impl.firestore.UserFirestoreDataSourceImpl
 import com.example.proyecto_movil.data.datasource.impl.retrofit.*
 import com.example.proyecto_movil.data.datasource.services.*
 import com.example.proyecto_movil.data.repository.*
+
+import com.google.firebase.firestore.FirebaseFirestore
 
 import dagger.Module
 import dagger.Provides
@@ -62,7 +65,7 @@ object AppModule {
         retrofit.create(ArtistRetrofitService::class.java)
 
     // ----------------------------
-    // Data Sources
+    // Data Sources (Retrofit)
     // ----------------------------
     @Singleton
     @Provides
@@ -93,8 +96,15 @@ object AppModule {
     fun provideArtistRemoteDataSource(
         service: ArtistRetrofitService
     ): ArtistRemoteDataSource = ArtistRetrofitDataSourceImpl(service)
-    // ⚠️ Si tu repo usa interfaz ArtistRemoteDataSource, mantenlo así.
-    // Si no existe esa interfaz, devuelve directamente ArtistRemoteDataSourceImpl.
+
+    // ----------------------------
+    // Firestore Data Source
+    // ----------------------------
+    @Singleton
+    @Provides
+    fun provideUserFirestoreDataSource(
+        firestore: FirebaseFirestore
+    ): UserFirestoreDataSourceImpl = UserFirestoreDataSourceImpl(firestore)
 
     // ----------------------------
     // Repositories
@@ -120,8 +130,9 @@ object AppModule {
     @Singleton
     @Provides
     fun provideUserRepository(
-        dataSource: UserRetrofitDataSourceImpl
-    ): UserRepository = UserRepository(dataSource)
+        retrofitDs: UserRetrofitDataSourceImpl,
+        firestoreDs: UserFirestoreDataSourceImpl
+    ): UserRepository = UserRepository(retrofitDs, firestoreDs)
 
     @Singleton
     @Provides

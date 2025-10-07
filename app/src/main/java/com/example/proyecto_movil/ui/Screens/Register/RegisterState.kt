@@ -5,10 +5,11 @@ data class RegisterState(
     val nombreUsuario: String = "",
     val email: String = "",
     val password: String = "",
+    val bio: String = "",
     val mostrarPassword: Boolean = false,
     val acceptedTerms: Boolean = false,
-    val errorMessage: String = "",
     val showMessage: Boolean = false,
+    val errorMessage: String = "",
     val navigateBack: Boolean = false,
     val navigateToLogin: Boolean = false,
     val navigateAfterRegister: Boolean = false
