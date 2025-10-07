@@ -40,4 +40,6 @@ class UserRepository @Inject constructor(
     } catch (e: Exception) {
         Result.failure(e)
     }
+
+    //suspend fun registerUser()
 }

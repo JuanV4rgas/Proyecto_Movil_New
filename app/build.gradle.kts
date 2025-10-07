@@ -107,6 +107,9 @@ dependencies {
     implementation("com.google.firebase:firebase-storage-ktx")
     implementation("com.google.firebase:firebase-messaging")
 
+    //FireStore
+    implementation("com.google.firebase:firebase-firestore")
+
     // --- Coil (imágenes) ---
     implementation("io.coil-kt:coil-compose:2.4.0")
 
