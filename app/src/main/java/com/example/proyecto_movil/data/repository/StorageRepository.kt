@@ -1,26 +1,24 @@
 package com.example.proyecto_movil.data.repository
 
 import android.net.Uri
-import com.example.proyecto_movil.data.datasource.AuthRemoteDataSource
-import com.example.proyecto_movil.data.datasource.StorageRemoteDataSource
-import javax.inject.Inject
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.tasks.await
+import java.util.UUID
 
-class StorageRepository @Inject constructor(
-    private val storage: StorageRemoteDataSource,
-    private val auth: AuthRemoteDataSource
+/**
+ * Sube imágenes de perfil a Firebase Storage y devuelve la URL pública.
+ */
+class StorageRepository(
+    private val storage: FirebaseStorage
 ) {
-
     suspend fun uploadProfileImage(uri: Uri): Result<String> {
         return try {
-            val userId = auth.currentUser?.uid ?: return Result.failure(
-                Exception(
-                    "No se encontro un usuario"
-                )
-            )
-            val path = "ProfileImages/$userId.jpg"
-            val url = storage.uploadImage(path, uri)
+            val fileName = "profile_images/${UUID.randomUUID()}.jpg"
+            val ref = storage.reference.child(fileName)
+            ref.putFile(uri).await()
+            val url = ref.downloadUrl.await().toString()
             Result.success(url)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }

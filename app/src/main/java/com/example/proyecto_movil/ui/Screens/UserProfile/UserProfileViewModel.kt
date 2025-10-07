@@ -2,11 +2,8 @@ package com.example.proyecto_movil.ui.Screens.UserProfile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.proyecto_movil.data.AlbumInfo
 import com.example.proyecto_movil.data.ReviewInfo
-import com.example.proyecto_movil.data.UserInfo
 import com.example.proyecto_movil.data.repository.UserRepository
-import com.example.proyecto_movil.data.repository.ReviewRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,100 +13,53 @@ import javax.inject.Inject
 
 @HiltViewModel
 class UserProfileViewModel @Inject constructor(
-    private val userRepository: UserRepository,
-    private val reviewRepository: ReviewRepository
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
-    private val _uiState: MutableStateFlow<UserProfileState> = MutableStateFlow(UserProfileState())
+    private val _uiState = MutableStateFlow(UserProfileState())
     val uiState: StateFlow<UserProfileState> = _uiState
 
-    /**
-     * Carga el usuario y sus reseñas desde el backend
-     */
-    fun loadUser(userId: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-
-            try {
-                val userResult = userRepository.getUserById(userId)
-                val reviewsResult = reviewRepository.getReviewsByUserId(userId)
-
-                if (userResult.isSuccess) {
-                    val user = userResult.getOrNull()
-                    val reviews = reviewsResult.getOrElse { emptyList() }
-
-                    if (user != null) {
-                        val fav = user.playlists.firstOrNull()?.albums ?: emptyList()
-
-                        _uiState.update {
-                            it.copy(
-                                user = user,
-                                username = user.username,
-                                avatarUrl = user.profileImageUrl,
-                                followers = user.followers,
-                                following = user.following,
-                                favoriteAlbums = fav,
-                                reviews = reviews,
-                                isLoading = false,
-                                error = null
-                            )
-                        }
-                    } else {
-                        _uiState.update {
-                            it.copy(
-                                error = "Usuario no encontrado",
-                                isLoading = false
-                            )
-                        }
-                    }
-                } else {
-                    _uiState.update {
-                        it.copy(
-                            error = userResult.exceptionOrNull()?.message
-                                ?: "Error al cargar usuario",
-                            isLoading = false
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(error = e.message ?: "Error desconocido", isLoading = false)
-                }
-            }
-        }
+    // Lo llama tu Screen
+    fun setInitialData(userId: String) {
+        loadUser(userId)
     }
 
-    /**
-     * Para inicializar datos si ya tienes el usuario y las reseñas cargadas.
-     */
-    fun setInitialData(user: UserInfo, reviews: List<ReviewInfo>) {
-        val fav = user.playlists.firstOrNull()?.albums ?: emptyList()
-        _uiState.update {
-            it.copy(
-                user = user,
-                username = user.username,
-                avatarUrl = user.profileImageUrl,
-                followers = user.followers,
-                following = user.following,
-                favoriteAlbums = fav,
-                reviews = reviews,
-                isLoading = false,
-                error = null
+    fun loadUser(userId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            userRepository.getUserById(userId).fold(
+                onSuccess = { user ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            user = user,
+                            reviews = emptyList<ReviewInfo>(),     // cargar si tienes fuente
+                            favoriteAlbums = emptyList()            // cargar si tienes fuente
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(isLoading = false, errorMessage = e.message ?: "Error cargando usuario")
+                    }
+                }
             )
         }
     }
 
-    // ---- Acciones de UI ----
-    fun onBackClicked() = _uiState.update { s -> s.copy(navigateBack = true) }
-    fun onSettingsClicked() = _uiState.update { s -> s.copy(navigateToSettings = true) }
-    fun onEditProfileClicked() = _uiState.update { s -> s.copy(navigateToEditProfile = true) }
-    fun onAlbumClicked(album: AlbumInfo) = _uiState.update { s -> s.copy(openAlbumId = album.id) }
-    fun onReviewClicked(review: ReviewInfo) = _uiState.update { s -> s.copy(openReview = review) }
+    // Acciones que TU Screen usa
+    fun onBackClicked()               = _uiState.update { it.copy(navigateBack = true) }
+    fun consumeBack()                 = _uiState.update { it.copy(navigateBack = false) }
 
-    // ---- Consumidores ----
-    fun consumeBack() = _uiState.update { s -> s.copy(navigateBack = false) }
-    fun consumeSettings() = _uiState.update { s -> s.copy(navigateToSettings = false) }
-    fun consumeEdit() = _uiState.update { s -> s.copy(navigateToEditProfile = false) }
-    fun consumeOpenAlbum() = _uiState.update { s -> s.copy(openAlbumId = null) }
-    fun consumeOpenReview() = _uiState.update { s -> s.copy(openReview = null) }
+    fun onSettingsClicked()           = _uiState.update { it.copy(navigateToSettings = true) }
+    fun consumeSettings()             = _uiState.update { it.copy(navigateToSettings = false) }
+
+    fun onEditProfileClicked()        = _uiState.update { it.copy(navigateToEditProfile = true) }
+    fun consumeEdit()                 = _uiState.update { it.copy(navigateToEditProfile = false) }
+
+    fun onAlbumClicked(id: Int)       = _uiState.update { it.copy(openAlbumId = id) }
+    fun consumeOpenAlbum()            = _uiState.update { it.copy(openAlbumId = null) }
+
+    fun onReviewClicked(id: Int)      = _uiState.update { it.copy(openReview = id) }
+    fun consumeOpenReview()           = _uiState.update { it.copy(openReview = null) }
 }

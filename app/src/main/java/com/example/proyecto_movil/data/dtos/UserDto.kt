@@ -6,9 +6,9 @@ import com.example.proyecto_movil.data.UserInfo
  * DTO que refleja exactamente la respuesta de la API.
  */
 data class UserProfileDto(
-    val id: Int,
+    val id: String,           // ← String
     val username: String,
-    val profile_pic: String, // URL
+    val profile_pic: String,  // URL
     val bio: String,
     val followers: Int,
     val following: Int,
@@ -16,13 +16,10 @@ data class UserProfileDto(
     val updatedAt: String,
 )
 
-/**
- * Mapeo de DTO -> UI model.
- * createdAt/updatedAt no están en UserUI; si los necesitás para UI, agregalos allí.
- */
+/** Mapeo DTO -> UI model */
 fun UserProfileDto.toUserUI(): UserInfo {
     return UserInfo(
-        id = id,
+        id = id,                          // ← String
         username = username,
         profileImageUrl = profile_pic,
         bio = bio,
@@ -31,3 +28,10 @@ fun UserProfileDto.toUserUI(): UserInfo {
         playlists = emptyList()
     )
 }
+
+/** Para update en API */
+data class UpdateUserDto(
+    val username: String,
+    val bio: String,
+    val profile_pic: String? = null
+)
