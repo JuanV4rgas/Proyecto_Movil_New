@@ -5,8 +5,11 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,7 +23,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.proyecto_movil.R
 import com.example.proyecto_movil.ui.utils.*
-import androidx.compose.foundation.layout.imePadding
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -32,7 +34,8 @@ fun RegisterScreen(
     onRegister: (String, String, String) -> Unit = { _, _, _ -> },
     onLogin: () -> Unit = {}
 ) {
-    val actualViewModel = when (viewModel) {
+    // Adaptador para soportar RegisterViewModelLike y RegisterViewModel reales
+    val actualViewModel: RegisterViewModelLike = when (viewModel) {
         is RegisterViewModelLike -> viewModel
         is RegisterViewModel -> object : RegisterViewModelLike {
             override val uiState: StateFlow<RegisterState> = viewModel.uiState
@@ -48,16 +51,15 @@ fun RegisterScreen(
             override fun consumeNavigation() = viewModel.consumeNavigation()
             override fun consumeMessage() = viewModel.consumeMessage()
         }
-        else -> throw IllegalArgumentException("RegisterScreen necesita un RegisterViewModel o RegisterViewModelLike")
+        else -> error("RegisterScreen necesita un RegisterViewModel o RegisterViewModelLike")
     }
 
     val state by actualViewModel.uiState.collectAsState()
     val isDark = isSystemInDarkTheme()
     val backgroundRes = if (isDark) R.drawable.fondocriti else R.drawable.fondocriti_light
-
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Mostrar snackbar de manera segura
+    // Mensajes
     LaunchedEffect(state.showMessage, state.errorMessage) {
         if (state.showMessage) {
             state.errorMessage?.let { msg ->
@@ -67,21 +69,18 @@ fun RegisterScreen(
         }
     }
 
-    // Dejo la navegación derivada por compatibilidad
-    LaunchedEffect(state.navigateBack, state.navigateToLogin, state.navigateAfterRegister) {
-        when {
-            state.navigateBack -> {
-                onBack()
-                actualViewModel.consumeNavigation()
-            }
-            state.navigateToLogin -> {
-                onLogin()
-                actualViewModel.consumeNavigation()
-            }
-            state.navigateAfterRegister -> {
-                onRegister(state.nombreUsuario, state.email, state.password)
-                actualViewModel.consumeNavigation()
-            }
+    // Navegación disparada por ViewModel (p. ej., tras registrarse)
+    LaunchedEffect(state.navigateAfterRegister) {
+        if (state.navigateAfterRegister) {
+            onRegister(state.nombreUsuario, state.email, state.password)
+            actualViewModel.consumeNavigation()
+        }
+    }
+    // Si tu VM emite "navigateToLogin", también lo respetamos
+    LaunchedEffect(state.navigateToLogin) {
+        if (state.navigateToLogin) {
+            onLogin()
+            actualViewModel.consumeNavigation()
         }
     }
 
@@ -98,16 +97,11 @@ fun RegisterScreen(
                 contentScale = ContentScale.Crop
             )
 
-            IconButton(
-                onClick = {
-                    onBack()                      // navegar YA
-                    actualViewModel.onBackClicked() // opcional: notificar al VM
-                },
-                modifier = Modifier.padding(10.dp)
-            ) {
+            // ← Volver (directo, sin pasar por VM)
+            IconButton(onClick = onBack, modifier = Modifier.padding(10.dp)) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = "Volver",
                     tint = MaterialTheme.colorScheme.onSurface
                 )
             }
@@ -125,6 +119,7 @@ fun RegisterScreen(
                 Spacer(Modifier.height(60.dp))
                 Registrate(texto = "Regístrate")
                 Spacer(Modifier.height(10.dp))
+
 
                 FormularioRegistro(
                     nombrePersona = state.nombrePersona,
@@ -170,13 +165,10 @@ fun RegisterScreen(
 
                 Spacer(Modifier.height(30.dp))
 
-                // Navega directo al Login
+                // → Inicia sesión (directo, sin depender de flags)
                 YatienesCuenta(
                     texto = "¿Ya tienes una cuenta? Inicia sesión",
-                    onClick = {
-                        onLogin()                        // navegar YA
-                        actualViewModel.onLoginClicked() // opcional
-                    }
+                    onClick = onLogin
                 )
 
                 Spacer(Modifier.height(40.dp))
@@ -185,6 +177,7 @@ fun RegisterScreen(
     }
 }
 
+/* ---------- Formulario que faltaba ---------- */
 @Composable
 private fun FormularioRegistro(
     nombrePersona: String,
@@ -206,15 +199,7 @@ private fun FormularioRegistro(
         OutlinedTextField(
             value = nombrePersona,
             onValueChange = onNombrePersonaChange,
-            label = { Text(stringResource(R.string.nombre)) },
-            leadingIcon = {
-                Icon(
-                    painter = painterResource(R.drawable.usuario),
-                    modifier = Modifier.size(20.dp),
-                    contentDescription = "Icono de usuario",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
+            label = { Text("Nombre") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
@@ -222,15 +207,7 @@ private fun FormularioRegistro(
         OutlinedTextField(
             value = nombreUsuario,
             onValueChange = onNombreUsuarioChange,
-            label = { Text(stringResource(R.string.nombre_usuario)) },
-            leadingIcon = {
-                Icon(
-                    painter = painterResource(R.drawable.usuario),
-                    modifier = Modifier.size(20.dp),
-                    contentDescription = "Icono de usuario",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
+            label = { Text("Nombre de usuario") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
@@ -238,15 +215,7 @@ private fun FormularioRegistro(
         OutlinedTextField(
             value = email,
             onValueChange = onEmailChange,
-            label = { Text(stringResource(R.string.email)) },
-            leadingIcon = {
-                Icon(
-                    painter = painterResource(R.drawable.correo),
-                    modifier = Modifier.size(20.dp),
-                    contentDescription = "Icono de correo",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
+            label = { Text("Email") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
@@ -254,27 +223,17 @@ private fun FormularioRegistro(
         OutlinedTextField(
             value = password,
             onValueChange = onPasswordChange,
-            label = { Text(stringResource(R.string.contra)) },
-            leadingIcon = {
-                Icon(
-                    painter = painterResource(R.drawable.candado),
-                    modifier = Modifier.size(20.dp),
-                    contentDescription = "Icono de candado",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
+            label = { Text("Contraseña") },
+            singleLine = true,
             visualTransformation = if (mostrarPassword) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
                 IconButton(onClick = onTogglePassword) {
                     Icon(
-                        painter = painterResource(if (mostrarPassword) R.drawable.view else R.drawable.hide),
-                        contentDescription = stringResource(R.string.mostrar_password),
-                        modifier = Modifier.size(22.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        imageVector = if (mostrarPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                        contentDescription = if (mostrarPassword) "Ocultar contraseña" else "Mostrar contraseña"
                     )
                 }
             },
-            singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp)
@@ -282,7 +241,7 @@ private fun FormularioRegistro(
     }
 }
 
-/** Contrato mínimo que el RegisterScreen necesita. */
+/* --- Interfaces para Preview / Adaptador --- */
 interface RegisterViewModelLike {
     val uiState: StateFlow<RegisterState>
     fun updateNombrePersona(value: String)
@@ -298,11 +257,10 @@ interface RegisterViewModelLike {
     fun consumeMessage()
 }
 
-/** Solo para preview local. */
+/* Fake ViewModel para Preview */
 class FakeRegisterViewModel : RegisterViewModelLike {
     private val _uiState = MutableStateFlow(RegisterState())
     override val uiState: StateFlow<RegisterState> = _uiState
-
     override fun updateNombrePersona(value: String) {}
     override fun updateNombreUsuario(value: String) {}
     override fun updateEmail(value: String) {}

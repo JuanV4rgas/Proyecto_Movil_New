@@ -33,19 +33,12 @@ import com.example.proyecto_movil.navigation.Screen
 
 @Composable
 fun CritiChordApp() {
-
     val navController = rememberNavController()
 
     Scaffold(
-        topBar = {
-            CritiChordTopBar()
-        },
-        bottomBar = {
-            TwitterBottomNavigationBar(navController)
-        }
-    ) {
-
-        innerPadding ->
+        topBar = { CritiChordTopBar() },
+        bottomBar = { TwitterBottomNavigationBar(navController) }
+    ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -55,6 +48,8 @@ fun CritiChordApp() {
         }
     }
 }
+
+/* -------- Bottom Navigation -------- */
 
 data class BottomNavItem(
     val filledeIcon: ImageVector,
@@ -76,9 +71,7 @@ fun TwitterBottomNavigationBar(
     val navBackStackEntry = navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry.value?.destination?.route
 
-    NavigationBar(
-        modifier = modifier
-    ) {
+    NavigationBar(modifier = modifier) {
         bottomNavItems.forEach { item ->
             val isSelected = currentRoute == item.route
 
@@ -89,26 +82,23 @@ fun TwitterBottomNavigationBar(
                         contentDescription = item.route
                     )
                 },
-                selected = false,
-                onClick = {
-                    navController.navigate(item.route)
-                }
-
+                selected = isSelected,
+                onClick = { navController.navigate(item.route) }
             )
-
         }
     }
 }
 
+/* -------- Top Bar -------- */
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CritiChordTopBar() {
-
     val isDark = isSystemInDarkTheme()
     val logoRes = if (isDark) {
-        R.drawable.logo   // logo normal para oscuro
+        R.drawable.logo      // logo para tema oscuro
     } else {
-        R.drawable.logo_negro  // logo negro para claro
+        R.drawable.logo_negro // logo negro para tema claro
     }
 
     CenterAlignedTopAppBar(
@@ -133,18 +123,17 @@ fun CritiChordTopBar() {
     )
 }
 
-
+/* (Opcional) Si quisieras una BottomBar distinta en el futuro */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CritiChordBottomBar(
     navController: NavController
 ) {
-
     val isDark = isSystemInDarkTheme()
     val logoRes = if (isDark) {
-        R.drawable.logo   // logo normal para oscuro
+        R.drawable.logo
     } else {
-        R.drawable.logo_negro  // logo negro para claro
+        R.drawable.logo_negro
     }
 
     CenterAlignedTopAppBar(
@@ -153,8 +142,8 @@ fun CritiChordBottomBar(
                 Icon(
                     painter = painterResource(id = logoRes),
                     contentDescription = "Logo CritiChord",
-                    tint = Color.Unspecified, // para que respete los colores originales del drawable
-                    modifier = Modifier.size(32.dp) // ajusta el tamaño a lo que quieras
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(32.dp)
                 )
                 Text(
                     text = "CritiChord",

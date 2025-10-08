@@ -6,15 +6,15 @@ sealed class Screen(val route: String) {
     object Register : Screen("register")
     object Home : Screen("home")
 
-    // Perfil por UID (String). Permitimos también Int para compatibilidad.
+    // Perfil por UID (String)
     object Profile : Screen("profile/{uid}") {
         fun createRoute(uid: String) = "profile/$uid"
-        fun createRoute(uid: Int) = "profile/$uid" // compatibilidad con llamadas antiguas
+        fun createRoute(uid: Int) = "profile/$uid" // compatibilidad si en algún lado aún llega Int
     }
 
     object Album : Screen("album/{albumId}") {
         fun createRoute(albumId: Int) = "album/$albumId"
-        fun createRoute(albumId: String) = "album/$albumId" // por si en algún sitio llega como String
+        fun createRoute(albumId: String) = "album/$albumId"
     }
 
     object ContentArtist : Screen("content_artist/{artistId}") {

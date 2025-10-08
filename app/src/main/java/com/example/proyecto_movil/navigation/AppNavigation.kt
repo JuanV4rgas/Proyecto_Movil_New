@@ -19,10 +19,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.proyecto_movil.data.AlbumInfo
-import com.example.proyecto_movil.ui.theme.Proyecto_movilTheme
-import com.google.firebase.auth.FirebaseAuth
-
-// Screens + ViewModels
 import com.example.proyecto_movil.ui.Screens.Welcome.WelcomeScreen
 import com.example.proyecto_movil.ui.Screens.Welcome.WelcomeViewModel
 import com.example.proyecto_movil.ui.Screens.Login.LoginScreen
@@ -42,6 +38,8 @@ import com.example.proyecto_movil.ui.Screens.AddReview.AddReviewViewModel
 import com.example.proyecto_movil.ui.Screens.EditProfile.EditarPerfilScreen
 import com.example.proyecto_movil.ui.Screens.EditProfile.EditProfileViewModel
 import com.example.proyecto_movil.ui.Screens.AlbumReviews.AlbumReviewScreen
+import com.example.proyecto_movil.ui.theme.Proyecto_movilTheme
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun AppNavHost(
@@ -91,6 +89,7 @@ fun AppNavHost(
             val vm: RegisterViewModel = hiltViewModel()
             val state = vm.uiState.collectAsState().value
 
+            // Si decides navegar a Home después de registrarse:
             if (state.navigateAfterRegister) {
                 LaunchedEffect(Unit) {
                     navController.navigate(Screen.Home.route) {
@@ -121,16 +120,10 @@ fun AppNavHost(
                 onAlbumClick = { album: AlbumInfo ->
                     navController.navigate(Screen.Album.createRoute(album.id))
                 }
-                // Si tu HomeScreen tiene bottom bar con perfil, pásale un callback y navega a Profile con el UID:
-                // onProfileClick = {
-                //     FirebaseAuth.getInstance().currentUser?.uid?.let { uid ->
-                //         navController.navigate(Screen.Profile.createRoute(uid)) { launchSingleTop = true }
-                //     } ?: navController.navigate(Screen.Login.route)
-                // }
             )
         }
 
-        /* PROFILE (uid String) */
+        /* PROFILE (por UID String) */
         composable(
             route = Screen.Profile.route,
             arguments = listOf(navArgument("uid") { type = NavType.StringType })
@@ -138,7 +131,6 @@ fun AppNavHost(
             val uid = backStackEntry.arguments?.getString("uid").orEmpty()
             val vm: UserProfileViewModel = hiltViewModel()
 
-            // Carga inicial por UID
             LaunchedEffect(uid) { if (uid.isNotBlank()) vm.setInitialData(uid) }
             val state = vm.uiState.collectAsState().value
 
@@ -151,7 +143,7 @@ fun AppNavHost(
                     onAlbumClick = { album ->
                         navController.navigate(Screen.Album.createRoute(album.id))
                     },
-                    onReviewClick = { /* TODO si quieres abrir detalle */ },
+                    onReviewClick = { /* TODO */ },
                     onSettingsClick = { navController.navigate(Screen.Settings.route) },
                     onEditProfile = { navController.navigate(Screen.EditProfile.route) }
                 )
@@ -178,9 +170,10 @@ fun AppNavHost(
                     onArtistClick = {
                         navController.navigate(Screen.ContentArtist.createRoute(selectedAlbum.artist.id))
                     },
-                    onUserClick = { uid /* podría ser Int en tu modelo */ ->
-                        // Navega a perfil usando uid como String
-                        navController.navigate(Screen.Profile.createRoute(uid.toString()))
+                    onUserClick = { anyUid ->
+                        // Si viene Int, toString(); si ya es String, úsalo.
+                        val uidString = anyUid.toString()
+                        navController.navigate(Screen.Profile.createRoute(uidString))
                     }
                 )
             } else {
@@ -228,14 +221,13 @@ fun AppNavHost(
         /* EDIT PROFILE */
         composable(Screen.EditProfile.route) {
             val vm: EditProfileViewModel = hiltViewModel()
-
             val currentUid = FirebaseAuth.getInstance().currentUser?.uid
             if (currentUid == null) {
                 SimpleError("Debes iniciar sesión")
             } else {
                 EditarPerfilScreen(
                     viewModel = vm,
-                    userId = currentUid, // tu VM pide String
+                    userId = currentUid,
                     onBack = { navController.navigateUp() },
                     onSaved = {
                         navController.navigate(Screen.Profile.createRoute(currentUid)) {
