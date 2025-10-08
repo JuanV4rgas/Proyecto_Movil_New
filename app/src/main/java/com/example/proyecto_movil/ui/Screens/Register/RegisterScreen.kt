@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,8 +16,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.example.proyecto_movil.R
 import com.example.proyecto_movil.ui.utils.*
 import androidx.compose.foundation.layout.imePadding
@@ -32,7 +32,6 @@ fun RegisterScreen(
     onRegister: (String, String, String) -> Unit = { _, _, _ -> },
     onLogin: () -> Unit = {}
 ) {
-    // Adaptador: permite usar tanto RegisterViewModel como FakeRegisterViewModel
     val actualViewModel = when (viewModel) {
         is RegisterViewModelLike -> viewModel
         is RegisterViewModel -> object : RegisterViewModelLike {
@@ -58,13 +57,17 @@ fun RegisterScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Mostrar snackbar de manera segura
     LaunchedEffect(state.showMessage, state.errorMessage) {
-        if (state.showMessage && state.errorMessage.isNotBlank()) {
-            snackbarHostState.showSnackbar(state.errorMessage)
+        if (state.showMessage) {
+            state.errorMessage?.let { msg ->
+                if (msg.isNotBlank()) snackbarHostState.showSnackbar(message = msg)
+            }
             actualViewModel.consumeMessage()
         }
     }
 
+    // Dejo la navegación derivada por compatibilidad
     LaunchedEffect(state.navigateBack, state.navigateToLogin, state.navigateAfterRegister) {
         when {
             state.navigateBack -> {
@@ -96,11 +99,14 @@ fun RegisterScreen(
             )
 
             IconButton(
-                onClick = { actualViewModel.onBackClicked() },
+                onClick = {
+                    onBack()                      // navegar YA
+                    actualViewModel.onBackClicked() // opcional: notificar al VM
+                },
                 modifier = Modifier.padding(10.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Filled.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
                     tint = MaterialTheme.colorScheme.onSurface
                 )
@@ -163,9 +169,14 @@ fun RegisterScreen(
                 )
 
                 Spacer(Modifier.height(30.dp))
+
+                // Navega directo al Login
                 YatienesCuenta(
                     texto = "¿Ya tienes una cuenta? Inicia sesión",
-                    onClick = { actualViewModel.onLoginClicked() }
+                    onClick = {
+                        onLogin()                        // navegar YA
+                        actualViewModel.onLoginClicked() // opcional
+                    }
                 )
 
                 Spacer(Modifier.height(40.dp))
@@ -271,9 +282,7 @@ private fun FormularioRegistro(
     }
 }
 
-/**
- * Interfaz mínima que el RegisterScreen necesita.
- */
+/** Contrato mínimo que el RegisterScreen necesita. */
 interface RegisterViewModelLike {
     val uiState: StateFlow<RegisterState>
     fun updateNombrePersona(value: String)
@@ -289,9 +298,7 @@ interface RegisterViewModelLike {
     fun consumeMessage()
 }
 
-/**
- * Fake ViewModel sin Hilt ni dependencias reales, solo para Preview.
- */
+/** Solo para preview local. */
 class FakeRegisterViewModel : RegisterViewModelLike {
     private val _uiState = MutableStateFlow(RegisterState())
     override val uiState: StateFlow<RegisterState> = _uiState

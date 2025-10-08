@@ -27,9 +27,6 @@ import com.example.proyecto_movil.R
 import com.example.proyecto_movil.data.AlbumInfo
 import com.example.proyecto_movil.data.ReviewInfo
 import com.example.proyecto_movil.data.UserInfo
-import com.example.proyecto_movil.data.repository.ReviewRepository
-import com.example.proyecto_movil.data.repository.UserRepository
-import com.example.proyecto_movil.ui.theme.Proyecto_movilTheme
 
 @Composable
 fun UserProfileScreen(
@@ -44,7 +41,8 @@ fun UserProfileScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(user.id) { viewModel.setInitialData(user, reviews) }
+    // El VM pide solo userId:String
+    LaunchedEffect(user.id) { viewModel.setInitialData(user.id) }
 
     LaunchedEffect(
         state.navigateBack,
@@ -69,14 +67,16 @@ fun UserProfileScreen(
             state.favoriteAlbums.firstOrNull { it.id == albumId }?.let { onAlbumClick(it) }
             viewModel.consumeOpenAlbum()
         }
-        state.openReview?.let {
-            onReviewClick(it)
+        // Si openReview es Int? (índice) en tu VM:
+        state.openReview?.let { idx ->
+            val review = state.reviews.getOrNull(idx)
+            if (review != null) onReviewClick(review)
             viewModel.consumeOpenReview()
         }
     }
 
-    // 🔹 Mapa de álbumes (id -> AlbumInfo) para resolver las reseñas
-    val albumMap = remember {
+    // Mapa de álbumes para resolver reseñas -> usa los playlists del usuario
+    val albumMap = remember(user.playlists) {
         user.playlists
             .flatMap { it.albums }
             .associateBy { it.id.toString() }
@@ -129,10 +129,11 @@ fun UserProfileScreen(
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // 🔹 Cargar avatar desde URL (si no hay, usar placeholder)
+                // ---------- Header: usa datos de 'user' (NO del state) ----------
+                val avatar: String = user.avatarUrl.ifEmpty { "https://placehold.co/120x120" }
                 AsyncImage(
-                    model = state.avatarUrl.ifEmpty { "https://placehold.co/120x120" },
-                    contentDescription = state.username,
+                    model = avatar,
+                    contentDescription = user.username,
                     modifier = Modifier
                         .size(120.dp)
                         .clip(CircleShape),
@@ -140,13 +141,13 @@ fun UserProfileScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = state.username,
+                    text = user.username, // String explícito -> sin ambigüedad
                     fontWeight = FontWeight.Bold,
                     fontSize = 22.sp,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "${state.followers} seguidores • ${state.following} siguiendo",
+                    text = "${user.followers} seguidores • ${user.following} siguiendo",
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -175,7 +176,11 @@ fun UserProfileScreen(
                             Column(
                                 modifier = Modifier
                                     .width(120.dp)
-                                    .clickable { viewModel.onAlbumClicked(album) },
+                                    .clickable {
+                                        // VM espera Int (id)
+                                        viewModel.onAlbumClicked(album.id)
+                                        onAlbumClick(album)
+                                    },
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 AsyncImage(
@@ -215,13 +220,17 @@ fun UserProfileScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    state.reviews.forEach { review ->
+                    // forEachIndexed para tener el índice (Int) que el VM espera
+                    state.reviews.forEachIndexed { idx, review ->
                         val album = albumMap[review.albumId]
                         if (album != null) {
                             ReviewItem(
                                 review = review,
                                 album = album,
-                                onClick = { viewModel.onReviewClicked(review) }
+                                onClick = {
+                                    viewModel.onReviewClicked(idx) // VM: Int
+                                    onReviewClick(review)          // UI: ReviewInfo
+                                }
                             )
                         }
                     }
@@ -230,7 +239,7 @@ fun UserProfileScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = { },
+                    onClick = { /* navegación extra */ },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(50),
                     modifier = Modifier.fillMaxWidth()
@@ -296,4 +305,3 @@ private fun ReviewItem(review: ReviewInfo, album: AlbumInfo, onClick: () -> Unit
         }
     }
 }
-

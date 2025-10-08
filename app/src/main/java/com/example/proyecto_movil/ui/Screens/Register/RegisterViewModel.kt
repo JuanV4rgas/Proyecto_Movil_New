@@ -2,57 +2,104 @@ package com.example.proyecto_movil.ui.Screens.Register
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.proyecto_movil.data.repository.UserRepository
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
-    private val userRepository: UserRepository
+    private val auth: FirebaseAuth,
+    private val firestore: FirebaseFirestore
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RegisterState())
     val uiState: StateFlow<RegisterState> = _uiState
 
-    fun updateNombrePersona(v: String) = _uiState.update { it.copy(nombrePersona = v) }
-    fun updateNombreUsuario(v: String) = _uiState.update { it.copy(nombreUsuario = v) }
-    fun updateEmail(v: String) = _uiState.update { it.copy(email = v) }
-    fun updatePassword(v: String) = _uiState.update { it.copy(password = v) }
+    fun updateNombrePersona(value: String) = _uiState.update { it.copy(nombrePersona = value) }
+    fun updateNombreUsuario(value: String) = _uiState.update { it.copy(nombreUsuario = value) }
+    fun updateEmail(value: String) = _uiState.update { it.copy(email = value) }
+    fun updatePassword(value: String) = _uiState.update { it.copy(password = value) }
     fun toggleMostrarPassword() = _uiState.update { it.copy(mostrarPassword = !it.mostrarPassword) }
     fun toggleAcceptedTerms() = _uiState.update { it.copy(acceptedTerms = !it.acceptedTerms) }
 
-    fun onBackClicked() = _uiState.update { it.copy(navigateBack = true) }
-    fun onLoginClicked() = _uiState.update { it.copy(navigateToLogin = true) }
-
-    fun consumeMessage() = _uiState.update { it.copy(showMessage = false, errorMessage = null) }
-    fun consumeNavigation() = _uiState.update {
-        it.copy(navigateBack = false, navigateToLogin = false, navigateAfterRegister = false)
-    }
-
     fun onRegisterClicked() {
         val s = _uiState.value
+
         if (!s.acceptedTerms) {
-            _uiState.update { it.copy(showMessage = true, errorMessage = "Debes aceptar los términos") }
+            showMessage("Debes aceptar los términos y condiciones")
             return
         }
+        if (s.email.isBlank() || s.password.isBlank() || s.nombreUsuario.isBlank()) {
+            showMessage("Completa email, contraseña y nombre de usuario")
+            return
+        }
+
         viewModelScope.launch {
-            val uid = s.email // DEMO: usa el email como id; en real, usa FirebaseAuth.uid
-            userRepository.registerUser(
-                id = uid,
-                username = s.nombreUsuario,
-                email = s.email,
-                bio = s.nombrePersona,
-                profilePic = "" // ← no null
-            ).fold(
-                onSuccess = { _uiState.update { it.copy(navigateAfterRegister = true) } },
-                onFailure = { e ->
-                    _uiState.update { it.copy(showMessage = true, errorMessage = e.message ?: "Error registrando usuario") }
+            try {
+                // 1) Crear la cuenta
+                val result = auth.createUserWithEmailAndPassword(s.email.trim(), s.password).await()
+                val uid = result.user?.uid ?: error("UID nulo tras registro")
+
+                // 2) Guardar el usuario en Firestore con ID = uid (no email)
+                val data = hashMapOf(
+                    "id" to uid,
+                    "email" to s.email.trim(),
+                    "username" to s.nombreUsuario.trim(),
+                    "name" to s.nombrePersona.trim(),
+                    "followers" to 0,
+                    "following" to 0,
+                    "profileImageUrl" to "",
+                    "createdAt" to FieldValue.serverTimestamp()
+                )
+                firestore.collection("users").document(uid)
+                    .set(data, SetOptions.merge())
+                    .await()
+
+                // 3) Mensaje + navegación a Login
+                _uiState.update {
+                    it.copy(
+                        showMessage = true,
+                        errorMessage = "Cuenta creada. Inicia sesión.",
+                        navigateToLogin = true
+                    )
                 }
+            } catch (e: Exception) {
+                showMessage(e.message ?: "Error al registrar")
+            }
+        }
+    }
+
+    fun onLoginClicked() {
+        _uiState.update { it.copy(navigateToLogin = true) }
+    }
+
+    fun onBackClicked() {
+        _uiState.update { it.copy(navigateBack = true) }
+    }
+
+    fun consumeNavigation() {
+        _uiState.update {
+            it.copy(
+                navigateBack = false,
+                navigateToLogin = false,
+                navigateAfterRegister = false
             )
         }
+    }
+
+    fun consumeMessage() {
+        _uiState.update { it.copy(showMessage = false) }
+    }
+
+    private fun showMessage(msg: String) {
+        _uiState.update { it.copy(showMessage = true, errorMessage = msg) }
     }
 }

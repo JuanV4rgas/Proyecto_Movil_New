@@ -20,6 +20,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.proyecto_movil.data.AlbumInfo
 import com.example.proyecto_movil.ui.theme.Proyecto_movilTheme
+import com.google.firebase.auth.FirebaseAuth
 
 // Screens + ViewModels
 import com.example.proyecto_movil.ui.Screens.Welcome.WelcomeScreen
@@ -42,30 +43,6 @@ import com.example.proyecto_movil.ui.Screens.EditProfile.EditarPerfilScreen
 import com.example.proyecto_movil.ui.Screens.EditProfile.EditProfileViewModel
 import com.example.proyecto_movil.ui.Screens.AlbumReviews.AlbumReviewScreen
 
-// ---------------------- Rutas ----------------------
-/*
-sealed class Screen(val route: String) {
-    object Welcome : Screen("welcome")
-    object Login : Screen("login")
-    object Register : Screen("register")
-    object Home : Screen("home")
-    object Profile : Screen("profile/{userId}") {
-        fun createRoute(userId: Int) = "profile/$userId"
-    }
-    object Album : Screen("album/{albumId}") {
-        fun createRoute(albumId: Int) = "album/$albumId"
-    }
-    object ContentArtist : Screen("content_artist/{artistId}") {
-        fun createRoute(artistId: Int) = "content_artist/$artistId"
-    }
-    object ContentUser : Screen("content/user")
-    object Settings : Screen("settings")
-    object EditProfile : Screen("editProfile")
-    object AddReview : Screen("addReview")
-}
-
-*/
-// ---------------------- NavHost ----------------------
 @Composable
 fun AppNavHost(
     navController: NavHostController,
@@ -127,7 +104,12 @@ fun AppNavHost(
             RegisterScreen(
                 viewModel = vm,
                 onBack = { navController.navigateUp() },
-                onLogin = { navController.navigate(Screen.Login.route) }
+                onLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Register.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
             )
         }
 
@@ -139,18 +121,25 @@ fun AppNavHost(
                 onAlbumClick = { album: AlbumInfo ->
                     navController.navigate(Screen.Album.createRoute(album.id))
                 }
+                // Si tu HomeScreen tiene bottom bar con perfil, pásale un callback y navega a Profile con el UID:
+                // onProfileClick = {
+                //     FirebaseAuth.getInstance().currentUser?.uid?.let { uid ->
+                //         navController.navigate(Screen.Profile.createRoute(uid)) { launchSingleTop = true }
+                //     } ?: navController.navigate(Screen.Login.route)
+                // }
             )
         }
 
-        /* PROFILE */
+        /* PROFILE (uid String) */
         composable(
             route = Screen.Profile.route,
-            arguments = listOf(navArgument("userId") { type = NavType.StringType })
+            arguments = listOf(navArgument("uid") { type = NavType.StringType })
         ) { backStackEntry ->
-            val userId = "1"
+            val uid = backStackEntry.arguments?.getString("uid").orEmpty()
             val vm: UserProfileViewModel = hiltViewModel()
 
-            LaunchedEffect(userId) { vm.loadUser(userId) }
+            // Carga inicial por UID
+            LaunchedEffect(uid) { if (uid.isNotBlank()) vm.setInitialData(uid) }
             val state = vm.uiState.collectAsState().value
 
             if (state.user != null) {
@@ -162,7 +151,7 @@ fun AppNavHost(
                     onAlbumClick = { album ->
                         navController.navigate(Screen.Album.createRoute(album.id))
                     },
-                    onReviewClick = { /* TODO */ },
+                    onReviewClick = { /* TODO si quieres abrir detalle */ },
                     onSettingsClick = { navController.navigate(Screen.Settings.route) },
                     onEditProfile = { navController.navigate(Screen.EditProfile.route) }
                 )
@@ -189,8 +178,9 @@ fun AppNavHost(
                     onArtistClick = {
                         navController.navigate(Screen.ContentArtist.createRoute(selectedAlbum.artist.id))
                     },
-                    onUserClick = { uid ->
-                        navController.navigate(Screen.Profile.createRoute(uid.toInt()))
+                    onUserClick = { uid /* podría ser Int en tu modelo */ ->
+                        // Navega a perfil usando uid como String
+                        navController.navigate(Screen.Profile.createRoute(uid.toString()))
                     }
                 )
             } else {
@@ -214,7 +204,7 @@ fun AppNavHost(
             )
         }
 
-        /* CONTENT USER */
+        /* CONTENT USER (propietario) */
         composable(Screen.ContentUser.route) {
             val vm: ContentViewModel = hiltViewModel()
             LaunchedEffect(Unit) { vm.setInitial(artistId = null, isOwner = true) }
@@ -239,23 +229,23 @@ fun AppNavHost(
         composable(Screen.EditProfile.route) {
             val vm: EditProfileViewModel = hiltViewModel()
 
-            // 🧩 Usuario por defecto con id Int
-            val defaultUserId = 1
-
-            EditarPerfilScreen(
-                viewModel = vm,
-                userId = defaultUserId.toString(), // 🔸 EditProfileViewModel espera String
-                onBack = { navController.navigateUp() },
-                onSaved = {
-                    // 🔹 Al guardar, vuelve al perfil del usuario 1 actualizado
-                    navController.navigate(Screen.Profile.createRoute(defaultUserId)) {
-                        popUpTo(Screen.Profile.route) { inclusive = true }
-                        launchSingleTop = true
+            val currentUid = FirebaseAuth.getInstance().currentUser?.uid
+            if (currentUid == null) {
+                SimpleError("Debes iniciar sesión")
+            } else {
+                EditarPerfilScreen(
+                    viewModel = vm,
+                    userId = currentUid, // tu VM pide String
+                    onBack = { navController.navigateUp() },
+                    onSaved = {
+                        navController.navigate(Screen.Profile.createRoute(currentUid)) {
+                            popUpTo(Screen.Profile.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
-
 
         /* ADD REVIEW */
         composable(Screen.AddReview.route) {
