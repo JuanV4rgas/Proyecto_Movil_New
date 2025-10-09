@@ -7,9 +7,11 @@ data class RegisterState(
     val password: String = "",
     val mostrarPassword: Boolean = false,
     val acceptedTerms: Boolean = false,
-    val errorMessage: String = "",
+
+    val errorMessage: String? = null,
     val showMessage: Boolean = false,
-    val navigateBack: Boolean = false,
+
+    val navigateAfterRegister: Boolean = false,
     val navigateToLogin: Boolean = false,
-    val navigateAfterRegister: Boolean = false
+    val navigateBack: Boolean = false
 )

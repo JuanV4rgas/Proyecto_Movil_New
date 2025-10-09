@@ -8,7 +8,8 @@ import javax.inject.Inject
 class AuthRemoteDataSource @Inject constructor(
     private val auth: FirebaseAuth
 ) {
-    val currentUser: FirebaseUser? = auth.currentUser
+    val currentUser: FirebaseUser?
+        get() = auth.currentUser
 
     suspend fun signIn(email: String, password: String): Unit {
         auth.signInWithEmailAndPassword(email, password).await()
