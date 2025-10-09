@@ -2,6 +2,8 @@ package com.example.proyecto_movil.ui.Screens.Register
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.proyecto_movil.data.repository.AuthRepository
+import com.example.proyecto_movil.data.repository.UserRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -13,10 +15,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
+import com.example.proyecto_movil.ui.functions.Utils
 
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
     private val auth: FirebaseAuth,
+    private val authRepository: AuthRepository,
+    private val userRepository: UserRepository,
     private val firestore: FirebaseFirestore
 ) : ViewModel() {
 
@@ -47,8 +52,12 @@ class RegisterViewModel @Inject constructor(
                 // 1) Crear la cuenta
                 val result = auth.createUserWithEmailAndPassword(s.email.trim(), s.password).await()
                 val uid = result.user?.uid ?: error("UID nulo tras registro")
-
-                // 2) Guardar el usuario en Firestore con ID = uid (no email)
+                val userId = authRepository.currentUser?.uid ?: throw Exception("no se pudo obtener el usuario actual")
+                userRepository.registerUser(
+                    username = s.nombreUsuario,
+                    email = s.email,
+                    id = userId
+                )
                 val data = hashMapOf(
                     "id" to uid,
                     "email" to s.email.trim(),

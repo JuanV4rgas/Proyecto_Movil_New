@@ -1,15 +1,21 @@
 package com.example.proyecto_movil.data.datasource.impl.firestore
 
 import com.example.proyecto_movil.data.UserInfo
+import com.example.proyecto_movil.data.datasource.UserRemoteDataSource
+import com.example.proyecto_movil.data.dtos.RegisterUserDto
+import com.example.proyecto_movil.data.dtos.ReviewDto
+import com.example.proyecto_movil.data.dtos.UpdateUserDto
 import com.google.firebase.firestore.FirebaseFirestore
+import jakarta.inject.Inject
 import kotlinx.coroutines.tasks.await
 
-class UserFirestoreDataSourceImpl(
+class UserFirestoreDataSourceImpl @Inject constructor (
     private val db: FirebaseFirestore
-) {
+): UserRemoteDataSource {
     private val collection = db.collection("users")
 
-    suspend fun getUserById(id: String): UserInfo {
+    override suspend fun getUserById(id: String): UserInfo {
+
         val snap = collection.document(id).get().await()
         if (!snap.exists()) throw IllegalStateException("Usuario no encontrado en Firestore: $id")
 
@@ -24,6 +30,24 @@ class UserFirestoreDataSourceImpl(
             following = (data["following"] as? Number)?.toInt() ?: 0,
             playlists = emptyList()
         )
+    }
+
+    override suspend fun getUserReviews(id: String): List<ReviewDto> {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun updateUser(
+        id: String,
+        userDto: UpdateUserDto
+    ): UserInfo {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun registerUser(
+        registerUserDto: RegisterUserDto,
+        userId: String
+    ) {
+        TODO("Not yet implemented")
     }
 
     suspend fun createOrUpdateUser(
