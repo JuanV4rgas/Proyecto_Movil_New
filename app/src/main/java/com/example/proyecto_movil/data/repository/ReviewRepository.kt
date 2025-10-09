@@ -14,6 +14,15 @@ class ReviewRepository @Inject constructor(
         Result.success(reviewRemoteDataSource.getReviewsByUserId(userId).map { it.toReviewInfo() })
     } catch (e: Exception) { Result.failure(e) }
 
+    suspend fun getAllReviews(): Result<List<ReviewInfo>> {
+        return try {
+            val reviews = reviewRemoteDataSource.getAllReviews()
+            val reviewInfos = reviews.map { it.toReviewInfo() }
+            Result.success(reviewInfos)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
     suspend fun getReviewsByAlbumId(albumId: Int): Result<List<ReviewInfo>> {
         return try {
             val reviews = reviewRemoteDataSource.getReviewsByAlbumId(albumId.toString())

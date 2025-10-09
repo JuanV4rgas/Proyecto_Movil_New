@@ -16,13 +16,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import androidx.compose.ui.layout.ContentScale
 import com.example.proyecto_movil.R
 import com.example.proyecto_movil.data.AlbumInfo
 import com.example.proyecto_movil.data.ReviewInfo
@@ -41,9 +41,10 @@ fun UserProfileScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    // El VM pide solo userId:String
+    // Cargar datos iniciales según el id del usuario
     LaunchedEffect(user.id) { viewModel.setInitialData(user.id) }
 
+    // Navegaciones derivadas del estado del ViewModel
     LaunchedEffect(
         state.navigateBack,
         state.navigateToSettings,
@@ -67,7 +68,6 @@ fun UserProfileScreen(
             state.favoriteAlbums.firstOrNull { it.id == albumId }?.let { onAlbumClick(it) }
             viewModel.consumeOpenAlbum()
         }
-        // Si openReview es Int? (índice) en tu VM:
         state.openReview?.let { idx ->
             val review = state.reviews.getOrNull(idx)
             if (review != null) onReviewClick(review)
@@ -75,11 +75,11 @@ fun UserProfileScreen(
         }
     }
 
-    // Mapa de álbumes para resolver reseñas -> usa los playlists del usuario
-    val albumMap = remember(user.playlists) {
+    // ✅ Corregido: tipo explícito en el mapa de álbumes
+    val albumMap: Map<Int, AlbumInfo> = remember(user.playlists) {
         user.playlists
             .flatMap { it.albums }
-            .associateBy { it.id.toString() }
+            .associateBy { it.id }
     }
 
     val isDark = isSystemInDarkTheme()
@@ -129,7 +129,7 @@ fun UserProfileScreen(
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // ---------- Header: usa datos de 'user' (NO del state) ----------
+                // ---------- Header: usa datos del usuario ----------
                 val avatar: String = user.avatarUrl.ifEmpty { "https://placehold.co/120x120" }
                 AsyncImage(
                     model = avatar,
@@ -141,7 +141,7 @@ fun UserProfileScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = user.username, // String explícito -> sin ambigüedad
+                    text = user.username,
                     fontWeight = FontWeight.Bold,
                     fontSize = 22.sp,
                     color = MaterialTheme.colorScheme.onSurface
@@ -160,6 +160,7 @@ fun UserProfileScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // ---------- Álbumes favoritos ----------
                 if (state.favoriteAlbums.isNotEmpty()) {
                     Text(
                         "Tus álbumes favoritos",
@@ -177,7 +178,6 @@ fun UserProfileScreen(
                                 modifier = Modifier
                                     .width(120.dp)
                                     .clickable {
-                                        // VM espera Int (id)
                                         viewModel.onAlbumClicked(album.id)
                                         onAlbumClick(album)
                                     },
@@ -212,6 +212,7 @@ fun UserProfileScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // ---------- Reseñas ----------
                 Text(
                     "Tus reseñas",
                     fontWeight = FontWeight.Bold,
@@ -220,7 +221,6 @@ fun UserProfileScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    // forEachIndexed para tener el índice (Int) que el VM espera
                     state.reviews.forEachIndexed { idx, review ->
                         val album = albumMap[review.albumId]
                         if (album != null) {
@@ -228,8 +228,8 @@ fun UserProfileScreen(
                                 review = review,
                                 album = album,
                                 onClick = {
-                                    viewModel.onReviewClicked(idx) // VM: Int
-                                    onReviewClick(review)          // UI: ReviewInfo
+                                    viewModel.onReviewClicked(idx)
+                                    onReviewClick(review)
                                 }
                             )
                         }
@@ -297,7 +297,7 @@ private fun ReviewItem(review: ReviewInfo, album: AlbumInfo, onClick: () -> Unit
             else Color(0xFFC62828)
         Surface(color = scoreColor, shape = RoundedCornerShape(6.dp)) {
             Text(
-                text = "${(review.score * 10)}%",
+                text = "${(review.score * 10).toInt()}%", // ✅ conversión segura a texto
                 color = Color.White,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 fontWeight = FontWeight.Bold

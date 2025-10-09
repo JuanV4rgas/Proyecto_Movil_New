@@ -6,11 +6,11 @@ data class ReviewInfo(
     val content: String,
     val score: Double,
     val isLowScore: Boolean,
-    val albumId: String,
-    val userId: String,
+    val albumId: Int,
+    val userId: Int,
     val createdAt: String,
     val updatedAt: String,
     val liked: Boolean = false
 ) {
-    constructor() : this("", "", 0.0, false, "", "", "", "", false)
+    constructor() : this("", "", 0.0, false, 0, 0, "", "", false)
 }
